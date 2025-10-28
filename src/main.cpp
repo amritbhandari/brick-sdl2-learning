@@ -13,12 +13,21 @@ auto SPRITES_FOLDER = "images/";
 constexpr int SCREEN_WIDTH = 800;
 constexpr int SCREEN_HEIGHT = 600;
 
+constexpr int ballWidth = 30;
+constexpr int ballHeight = 30;
+constexpr int ballXLeftBoundary = 5;
+constexpr int ballXRightBoundary = SCREEN_WIDTH - ballWidth - 5;
+int ballX = (SCREEN_WIDTH - ballWidth) / 2;
+constexpr int ballY = 510;
+constexpr int ballSpeed = 10;
+
 const char* FONT_PATH = "images/consolas.ttf";
 constexpr int FONT_SIZE = 32;
 
 SDL_Window* window = nullptr;
 SDL_Renderer* renderer = nullptr;
 
+SDL_Texture* ballTexture = nullptr;
 SDL_Texture* gameOverTexture = nullptr;
 SDL_Texture* replayTexture = nullptr;
 
@@ -39,8 +48,8 @@ bool initialiseSDL()
     }
 
     window = SDL_CreateWindow("Brick",
-                              SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT,
-                              SDL_WINDOW_SHOWN);
+                              SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT,
+                              0);
     if (!window)
     {
         cout << "SDL_CreateWindow error: " << SDL_GetError() << endl;
@@ -61,6 +70,13 @@ bool initialiseSDL()
 
 bool loadMedia()
 {
+    ballTexture = IMG_LoadTexture(renderer, (SPRITES_FOLDER + string("ball.png")).c_str());
+    if (!ballTexture)
+    {
+        cout << "IMG_LoadTexture images/ball.png error: " << IMG_GetError() << endl;
+        return false;
+    }
+
     gameOverTexture = IMG_LoadTexture(renderer, (SPRITES_FOLDER + string("gameover.png")).c_str());
     if (!gameOverTexture)
     {
@@ -136,11 +152,15 @@ void handleEvents()
     const Uint8* currentKeyStates = SDL_GetKeyboardState(nullptr);
     if (currentKeyStates[SDL_SCANCODE_LEFT]) // left arrow key
     {
-        // within left boundary
+        // ballX = ballX > ballXLeftBoundary
+        //                  ? ballX - ballSpeed // within left boundary
+        //                  : ballXLeftBoundary;
     }
     if (currentKeyStates[SDL_SCANCODE_RIGHT]) // right arrow key
     {
-        // within right boundary
+        // ballX = (ballX < ballXRightBoundary)
+        //                  ? ballX + ballSpeed // within right boundary
+        //                  : ballXRightBoundary;
     }
 }
 
@@ -169,6 +189,10 @@ int main()
 
         if (!gameOver)
         {
+            // render ball
+            SDL_Rect ballRect = {ballX, ballY, ballWidth, ballHeight};
+            SDL_RenderCopy(renderer, ballTexture, nullptr, &ballRect);
+
             SDL_RenderPresent(renderer);
         }
         else
