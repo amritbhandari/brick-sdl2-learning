@@ -17,9 +17,10 @@ constexpr int ballWidth = 30;
 constexpr int ballHeight = 30;
 constexpr int ballXLeftBoundary = 5;
 constexpr int ballXRightBoundary = SCREEN_WIDTH - ballWidth - 5;
-int ballX = (SCREEN_WIDTH - ballWidth) / 2;
-constexpr int ballY = 510;
-constexpr int ballSpeed = 10;
+int ballX = 10;
+int ballY = 10;
+int ballXVelocity = 1;
+int ballYVelocity = 1;
 
 const char* FONT_PATH = "images/consolas.ttf";
 constexpr int FONT_SIZE = 32;
@@ -27,14 +28,24 @@ constexpr int FONT_SIZE = 32;
 SDL_Window* window = nullptr;
 SDL_Renderer* renderer = nullptr;
 
+SDL_Texture* backgroundTexture = nullptr;
 SDL_Texture* ballTexture = nullptr;
 SDL_Texture* gameOverTexture = nullptr;
 SDL_Texture* replayTexture = nullptr;
 
 TTF_Font* font = nullptr;
 
-bool gameOver = false;
-bool quit = false;
+bool continueGame = true;
+bool continuePlaying = true;
+
+void moveBallAndRender()
+{
+    ballX += ballXVelocity;
+    ballY += ballYVelocity;
+
+    SDL_Rect ballRect = {ballX, ballY, ballWidth, ballHeight};
+    SDL_RenderCopy(renderer, ballTexture, nullptr, &ballRect);
+}
 
 bool initialiseSDL()
 {
@@ -70,6 +81,13 @@ bool initialiseSDL()
 
 bool loadMedia()
 {
+    backgroundTexture = IMG_LoadTexture(renderer, (SPRITES_FOLDER + string("bg4a.jpg")).c_str());
+    if (!backgroundTexture)
+    {
+        cout << "IMG_LoadTexture images/bg4a.jpg error: " << IMG_GetError() << endl;
+        return false;
+    }
+
     ballTexture = IMG_LoadTexture(renderer, (SPRITES_FOLDER + string("ball.png")).c_str());
     if (!ballTexture)
     {
@@ -121,7 +139,7 @@ void RenderReplayText()
 
 void ResetGame()
 {
-    gameOver = false;
+    continueGame = true;
 }
 
 void handleEvents()
@@ -137,10 +155,10 @@ void handleEvents()
             }
             break;
         case SDL_QUIT:
-            quit = true;
+            continuePlaying = false;
             break;
         case SDL_KEYUP:
-            if (gameOver)
+            if (!continueGame)
             {
                 if (event.key.keysym.sym == SDLK_SPACE)
                     ResetGame();
@@ -180,18 +198,22 @@ int main()
     // random seed
     srand(time(nullptr));
 
-    while (!quit)
+    while (continuePlaying)
     {
         handleEvents();
 
         //reset
         SDL_RenderClear(renderer);
 
-        if (!gameOver)
+        if (continueGame)
         {
+            // render background
+            SDL_Rect backgroundRect = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+            SDL_RenderCopy(renderer, backgroundTexture, nullptr, &backgroundRect);
+
             // render ball
-            SDL_Rect ballRect = {ballX, ballY, ballWidth, ballHeight};
-            SDL_RenderCopy(renderer, ballTexture, nullptr, &ballRect);
+            moveBallAndRender();
+
 
             SDL_RenderPresent(renderer);
         }
