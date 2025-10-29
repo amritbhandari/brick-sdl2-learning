@@ -13,16 +13,31 @@ auto SPRITES_FOLDER = "images/";
 constexpr int SCREEN_WIDTH = 800;
 constexpr int SCREEN_HEIGHT = 600;
 
+// ball related
 constexpr int ballWidth = 30;
 constexpr int ballHeight = 30;
-constexpr int ballXLeftBoundary = 5;
-constexpr int ballXRightBoundary = SCREEN_WIDTH - ballWidth - 5;
+constexpr int ballXLeftBoundary = 0;
+constexpr int ballXRightBoundary = SCREEN_WIDTH - ballWidth;
+constexpr int ballYTopBoundary = 0;
+constexpr int ballYBottomBoundary = SCREEN_HEIGHT - ballHeight;
 int ballX = 10;
 int ballY = 10;
-int ballXVelocity = 1;
-int ballYVelocity = 1;
+int ballXVelocity = 2;
+int ballYVelocity = 2;
 
-const char* FONT_PATH = "images/consolas.ttf";
+// paddle related
+const auto paddleImagePath = SPRITES_FOLDER + string("paddleRed.png");
+constexpr int paddleWidth = 104;
+constexpr int paddleHeight = 24;
+constexpr int paddleXLeftBoundary = 0;
+constexpr int paddleXRightBoundary = SCREEN_WIDTH - paddleWidth;
+constexpr int paddleYTopBoundary = 0;
+constexpr int paddleYBottomBoundary = SCREEN_HEIGHT - paddleHeight - ballHeight;
+int paddleX = (paddleXRightBoundary) / 2;
+constexpr int paddleY = paddleYBottomBoundary;
+int paddleSpeed = 6;
+
+auto FONT_PATH = "images/consolas.ttf";
 constexpr int FONT_SIZE = 32;
 
 SDL_Window* window = nullptr;
@@ -30,6 +45,7 @@ SDL_Renderer* renderer = nullptr;
 
 SDL_Texture* backgroundTexture = nullptr;
 SDL_Texture* ballTexture = nullptr;
+SDL_Texture* paddleTexture = nullptr;
 SDL_Texture* gameOverTexture = nullptr;
 SDL_Texture* replayTexture = nullptr;
 
@@ -38,13 +54,48 @@ TTF_Font* font = nullptr;
 bool continueGame = true;
 bool continuePlaying = true;
 
+void detectBallCollisionWithWalls()
+{
+    if (ballX < ballXLeftBoundary || ballX > ballXRightBoundary)
+    {
+        ballXVelocity = -ballXVelocity;
+    }
+    if (ballY < ballYTopBoundary) // hit the top
+    {
+        ballYVelocity = -ballYVelocity;
+    }
+    else if (ballY > ballYBottomBoundary) // fell out of the bottom
+    {
+        continueGame = false;
+    }
+}
+
+void detectBallCollisionWithPaddle()
+{
+    SDL_Rect ballRect = {ballX, ballY, ballWidth, ballHeight};
+    SDL_Rect paddleRect = {paddleX, paddleY, paddleWidth, paddleHeight};
+    if (SDL_HasIntersection(&ballRect, &paddleRect)) // bounce up
+    {
+        ballYVelocity = abs(ballYVelocity) * -1;
+    }
+}
+
 void moveBallAndRender()
 {
     ballX += ballXVelocity;
     ballY += ballYVelocity;
 
+    detectBallCollisionWithWalls();
+    detectBallCollisionWithPaddle();
+
     SDL_Rect ballRect = {ballX, ballY, ballWidth, ballHeight};
     SDL_RenderCopy(renderer, ballTexture, nullptr, &ballRect);
+}
+
+void paddleRender()
+{
+    SDL_Rect paddleRect = {paddleX, paddleY, paddleWidth, paddleHeight};
+    SDL_RenderCopy(renderer, paddleTexture, nullptr, &paddleRect);
 }
 
 bool initialiseSDL()
@@ -95,6 +146,13 @@ bool loadMedia()
         return false;
     }
 
+    paddleTexture = IMG_LoadTexture(renderer, paddleImagePath.c_str());
+    if (!paddleTexture)
+    {
+        cout << "IMG_LoadTexture images/paddleRed.png error: " << IMG_GetError() << endl;
+        return false;
+    }
+
     gameOverTexture = IMG_LoadTexture(renderer, (SPRITES_FOLDER + string("gameover.png")).c_str());
     if (!gameOverTexture)
     {
@@ -140,6 +198,15 @@ void RenderReplayText()
 void ResetGame()
 {
     continueGame = true;
+
+    ballX = rand() % ballXRightBoundary;
+    ballY = paddleY - 350;
+
+    ballXVelocity = rand() % 2 ? 2 : -2;
+    ballYVelocity = 2;
+
+    paddleX = (paddleXRightBoundary) / 2;
+    paddleSpeed = 6;
 }
 
 void handleEvents()
@@ -149,11 +216,6 @@ void handleEvents()
     {
         switch (event.type)
         {
-        case SDL_KEYDOWN:
-            if (event.key.keysym.sym == SDLK_f)
-            {
-            }
-            break;
         case SDL_QUIT:
             continuePlaying = false;
             break;
@@ -170,15 +232,15 @@ void handleEvents()
     const Uint8* currentKeyStates = SDL_GetKeyboardState(nullptr);
     if (currentKeyStates[SDL_SCANCODE_LEFT]) // left arrow key
     {
-        // ballX = ballX > ballXLeftBoundary
-        //                  ? ballX - ballSpeed // within left boundary
-        //                  : ballXLeftBoundary;
+        paddleX = paddleX > paddleXLeftBoundary
+                         ? paddleX - paddleSpeed // within left boundary
+                         : paddleXLeftBoundary;
     }
     if (currentKeyStates[SDL_SCANCODE_RIGHT]) // right arrow key
     {
-        // ballX = (ballX < ballXRightBoundary)
-        //                  ? ballX + ballSpeed // within right boundary
-        //                  : ballXRightBoundary;
+        paddleX = (paddleX < paddleXRightBoundary)
+                         ? paddleX + paddleSpeed // within right boundary
+                         : paddleXRightBoundary;
     }
 }
 
@@ -198,6 +260,8 @@ int main()
     // random seed
     srand(time(nullptr));
 
+    ResetGame();
+
     while (continuePlaying)
     {
         handleEvents();
@@ -214,6 +278,7 @@ int main()
             // render ball
             moveBallAndRender();
 
+            paddleRender();
 
             SDL_RenderPresent(renderer);
         }
