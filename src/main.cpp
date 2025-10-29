@@ -20,8 +20,8 @@ constexpr int ballXLeftBoundary = 0;
 constexpr int ballXRightBoundary = SCREEN_WIDTH - ballWidth;
 constexpr int ballYTopBoundary = 0;
 constexpr int ballYBottomBoundary = SCREEN_HEIGHT - ballHeight;
-int ballX = 10;
-int ballY = 10;
+int ballX = SCREEN_WIDTH / 2;
+int ballY = 210;
 int ballXVelocity = 2;
 int ballYVelocity = 2;
 
@@ -35,7 +35,7 @@ constexpr int paddleYTopBoundary = 0;
 constexpr int paddleYBottomBoundary = SCREEN_HEIGHT - paddleHeight - ballHeight;
 int paddleX = (paddleXRightBoundary) / 2;
 constexpr int paddleY = paddleYBottomBoundary;
-int paddleSpeed = 6;
+constexpr int paddleSpeed = 6;
 
 // brick related
 const auto brickImagePath = SPRITES_FOLDER + string("brick.png");
@@ -46,6 +46,7 @@ SDL_Texture* brickTexture = nullptr;
 constexpr int rows = 3;
 constexpr int columns = 10;
 SDL_Rect bricks[rows][columns];
+int bricksRemaining = rows * columns;
 
 
 auto FONT_PATH = "images/consolas.ttf";
@@ -81,11 +82,20 @@ void initialiseBricks()
 
 void renderBricks()
 {
+    if (bricksRemaining <= 0)
+    {
+        continueGame = false;
+        return;
+    }
+
     for (int i = 0; i < rows; i++)
     {
         for (int j = 0; j < columns; j++)
         {
-            SDL_RenderCopy(renderer, brickTexture, nullptr, &bricks[i][j]);
+            if (bricks[i][j].y > 0) // haven't been knocked out yet
+            {
+                SDL_RenderCopy(renderer, brickTexture, nullptr, &bricks[i][j]);
+            }
         }
     }
 }
@@ -108,11 +118,38 @@ void detectBallCollisionWithWalls()
 
 void detectBallCollisionWithPaddle()
 {
+    if (ballYVelocity < 0 || ballY + ballHeight + 2 < paddleY) // going up or above paddle
+    {
+        return;
+    }
+
     SDL_Rect ballRect = {ballX, ballY, ballWidth, ballHeight};
     SDL_Rect paddleRect = {paddleX, paddleY, paddleWidth, paddleHeight};
     if (SDL_HasIntersection(&ballRect, &paddleRect)) // bounce up
     {
         ballYVelocity = -ballYVelocity;
+    }
+}
+
+bool checkCollision(const SDL_Rect& rect1, const SDL_Rect& rect2)
+{
+    return SDL_HasIntersection(&rect1, &rect2);
+}
+
+void detectBallCollisionWithBricks()
+{
+    SDL_Rect ballRect = {ballX, ballY, ballWidth, ballHeight};
+    for (int i = rows - 1; i >= 0; i--)
+    {
+        for (int j = 0; j < columns; j++)
+        {
+            SDL_Rect* brick = &bricks[i][j];
+            if (brick->y > 0 && checkCollision(ballRect, *brick))
+            {
+                brick->y = -1000;
+                ballYVelocity = -ballYVelocity;
+            }
+        }
     }
 }
 
@@ -122,7 +159,15 @@ void moveBallAndRender()
     ballY += ballYVelocity;
 
     detectBallCollisionWithWalls();
-    detectBallCollisionWithPaddle();
+
+    if (ballYVelocity > 0 && ballY + ballHeight + 2 >= paddleY) // going down
+    {
+        detectBallCollisionWithPaddle();
+    }
+    else if (ballY < 200) // near the brick wall bottom
+    {
+        detectBallCollisionWithBricks();
+    }
 
     SDL_Rect ballRect = {ballX, ballY, ballWidth, ballHeight};
     SDL_RenderCopy(renderer, ballTexture, nullptr, &ballRect);
@@ -213,8 +258,6 @@ bool loadMedia()
     return true;
 }
 
-
-
 void RenderText(const char* text, SDL_Texture*& texture, SDL_Rect& destRect)
 {
     SDL_Color textColour = {255, 255, 255};
@@ -242,18 +285,18 @@ void RenderReplayText()
 
 void ResetGame()
 {
-    continueGame = true;
+    bricksRemaining = rows * columns;
+    initialiseBricks();
 
     ballX = rand() % ballXRightBoundary;
-    ballY = paddleY - 350;
+    ballY = 250; // below the bricks
 
-    ballXVelocity = rand() % 2 ? 2 : -2;
+    ballXVelocity = rand() % 2 ? 2 : -2; // go left or right
     ballYVelocity = 2;
 
-    paddleX = (paddleXRightBoundary) / 2;
-    paddleSpeed = 6;
+    paddleX = (paddleXRightBoundary) / 2; // middle of screen
 
-    initialiseBricks();
+    continueGame = true;
 }
 
 void handleEvents()
@@ -320,10 +363,10 @@ int main()
 
             renderBricks();
 
+            paddleRender();
+
             // render ball
             moveBallAndRender();
-
-            paddleRender();
 
             SDL_RenderPresent(renderer);
         }
