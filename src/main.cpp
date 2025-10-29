@@ -37,6 +37,17 @@ int paddleX = (paddleXRightBoundary) / 2;
 constexpr int paddleY = paddleYBottomBoundary;
 int paddleSpeed = 6;
 
+// brick related
+const auto brickImagePath = SPRITES_FOLDER + string("brick.png");
+constexpr int brickWidth = 64;
+constexpr int brickHeight = 32;
+SDL_Surface* brickSurface = nullptr;
+SDL_Texture* brickTexture = nullptr;
+constexpr int rows = 3;
+constexpr int columns = 10;
+SDL_Rect bricks[rows][columns];
+
+
 auto FONT_PATH = "images/consolas.ttf";
 constexpr int FONT_SIZE = 32;
 
@@ -53,6 +64,31 @@ TTF_Font* font = nullptr;
 
 bool continueGame = true;
 bool continuePlaying = true;
+
+void initialiseBricks()
+{
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < columns; j++)
+        {
+            bricks[i][j] = {
+                33 + j * (brickWidth + 10), 50 + i * (brickHeight + 10),
+                brickWidth, brickHeight
+            };
+        }
+    }
+}
+
+void renderBricks()
+{
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < columns; j++)
+        {
+            SDL_RenderCopy(renderer, brickTexture, nullptr, &bricks[i][j]);
+        }
+    }
+}
 
 void detectBallCollisionWithWalls()
 {
@@ -76,7 +112,7 @@ void detectBallCollisionWithPaddle()
     SDL_Rect paddleRect = {paddleX, paddleY, paddleWidth, paddleHeight};
     if (SDL_HasIntersection(&ballRect, &paddleRect)) // bounce up
     {
-        ballYVelocity = abs(ballYVelocity) * -1;
+        ballYVelocity = -ballYVelocity;
     }
 }
 
@@ -139,6 +175,13 @@ bool loadMedia()
         return false;
     }
 
+    brickTexture = IMG_LoadTexture(renderer, brickImagePath.c_str());
+    if (!brickTexture)
+    {
+        cout << "IMG_LoadTexture images/brick.png error: " << IMG_GetError() << endl;
+        return false;
+    }
+
     ballTexture = IMG_LoadTexture(renderer, (SPRITES_FOLDER + string("ball.png")).c_str());
     if (!ballTexture)
     {
@@ -169,6 +212,8 @@ bool loadMedia()
 
     return true;
 }
+
+
 
 void RenderText(const char* text, SDL_Texture*& texture, SDL_Rect& destRect)
 {
@@ -207,6 +252,8 @@ void ResetGame()
 
     paddleX = (paddleXRightBoundary) / 2;
     paddleSpeed = 6;
+
+    initialiseBricks();
 }
 
 void handleEvents()
@@ -230,17 +277,13 @@ void handleEvents()
     }
 
     const Uint8* currentKeyStates = SDL_GetKeyboardState(nullptr);
-    if (currentKeyStates[SDL_SCANCODE_LEFT]) // left arrow key
+    if (currentKeyStates[SDL_SCANCODE_LEFT] && paddleX > paddleXLeftBoundary) // left arrow key
     {
-        paddleX = paddleX > paddleXLeftBoundary
-                         ? paddleX - paddleSpeed // within left boundary
-                         : paddleXLeftBoundary;
+        paddleX -= paddleSpeed;
     }
-    if (currentKeyStates[SDL_SCANCODE_RIGHT]) // right arrow key
+    if (currentKeyStates[SDL_SCANCODE_RIGHT] && paddleX < paddleXRightBoundary) // right arrow key
     {
-        paddleX = (paddleX < paddleXRightBoundary)
-                         ? paddleX + paddleSpeed // within right boundary
-                         : paddleXRightBoundary;
+        paddleX += paddleSpeed;
     }
 }
 
@@ -274,6 +317,8 @@ int main()
             // render background
             SDL_Rect backgroundRect = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
             SDL_RenderCopy(renderer, backgroundTexture, nullptr, &backgroundRect);
+
+            renderBricks();
 
             // render ball
             moveBallAndRender();
