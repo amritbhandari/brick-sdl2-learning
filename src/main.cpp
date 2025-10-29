@@ -22,8 +22,8 @@ constexpr int ballYTopBoundary = 0;
 constexpr int ballYBottomBoundary = SCREEN_HEIGHT - ballHeight;
 int ballX = SCREEN_WIDTH / 2;
 int ballY = 210;
-int ballXVelocity = 2;
-int ballYVelocity = 2;
+int ballXVelocity = 400;
+int ballYVelocity = 400;
 
 // paddle related
 const auto paddleImagePath = SPRITES_FOLDER + string("paddleRed.png");
@@ -35,13 +35,12 @@ constexpr int paddleYTopBoundary = 0;
 constexpr int paddleYBottomBoundary = SCREEN_HEIGHT - paddleHeight - ballHeight;
 int paddleX = (paddleXRightBoundary) / 2;
 constexpr int paddleY = paddleYBottomBoundary;
-constexpr int paddleSpeed = 6;
+constexpr int paddleSpeed = 12;
 
 // brick related
 const auto brickImagePath = SPRITES_FOLDER + string("brick.png");
 constexpr int brickWidth = 64;
 constexpr int brickHeight = 32;
-SDL_Surface* brickSurface = nullptr;
 SDL_Texture* brickTexture = nullptr;
 constexpr int rows = 3;
 constexpr int columns = 10;
@@ -148,6 +147,8 @@ void detectBallCollisionWithBricks()
             {
                 brick->y = -1000;
                 ballYVelocity = -ballYVelocity;
+
+                return;
             }
         }
     }
@@ -330,6 +331,22 @@ void handleEvents()
     }
 }
 
+
+void Destroy()
+{
+    SDL_DestroyTexture(brickTexture);
+    SDL_DestroyTexture(backgroundTexture);
+    SDL_DestroyTexture(ballTexture);
+    SDL_DestroyTexture(paddleTexture);
+    SDL_DestroyTexture(gameOverTexture);
+    SDL_DestroyTexture(replayTexture);
+
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+
+    SDL_Quit();
+}
+
 int main()
 {
     if (!initialiseSDL())
@@ -381,8 +398,5 @@ int main()
         }
     }
 
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-
-    SDL_Quit();
+    Destroy();
 }
